@@ -1,0 +1,24 @@
+# Auto-detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Custom diff driver for KiCad
+*.kicad_sch diff=kicad_sch
+*.kicad_pcb diff=kicad_pcb
+
+# Treat 3D models and binary assets as binary
+*.step binary
+*.stp binary
+*.stl binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+
+# Linguist overrides for generated files
+# Mobile
+*.g.dart linguist-generated
+*.freezed.dart linguist-generated
+android/gradlew linguist-generated
+ios/Runner/GeneratedPluginRegistrant.* linguist-generated
+
+# Firmware
+sdkconfig linguist-generated

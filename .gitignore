@@ -1,0 +1,33 @@
+# --- General ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+**/local.properties
+
+# --- Firmware (ESP-IDF) ---
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+
+# --- Mobile (Flutter) ---
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/ios/Flutter/.last_build_id
+mobile/android/.gradle
+mobile/android/app/src/main/assets/
+
+# --- Hardware (KiCad) ---
+*.lck
+*.bkp
+*.bak
+*_autosave-*
+fp-info-cache
+# Backups
+*-backups/
