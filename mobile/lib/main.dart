@@ -4,8 +4,10 @@ import 'services/ble_service.dart';
 import 'screens/connect_screen.dart';
 import 'screens/control_screen.dart';
 import 'screens/monitor_screen.dart';
+import 'models/models.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -17,11 +19,42 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => BLEService(),
       child: MaterialApp(
-        title: 'tDCS Control',
+        title: 'opentDCS',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          primarySwatch: Colors.cyan,
           useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: Colors.black,
+          primarySwatch: Colors.cyan,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.cyan,
+            brightness: Brightness.dark,
+            surface: const Color(0xFF121212),
+            onSurface: Colors.white,
+            primary: Colors.cyan,
+            secondary: Colors.amber,
+          ),
+          cardTheme: CardThemeData(
+            color: const Color(0xFF1A1A1A),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+            ),
+          ),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+          ),
+          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+            backgroundColor: Colors.black,
+            selectedItemColor: Colors.cyan,
+            unselectedItemColor: Colors.grey,
+            type: BottomNavigationBarType.fixed,
+            elevation: 0,
+          ),
         ),
         home: const HomeScreen(),
         routes: {
@@ -48,13 +81,22 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Attempt to auto-reconnect to last device on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<BLEService>().autoConnect();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('tDCS Control'),
-            backgroundColor: Colors.cyan,
+            title: const Text('opentDCS'),
+            backgroundColor: Colors.black,
             foregroundColor: Colors.white,
             actions: [
               // Connection status indicator
@@ -104,9 +146,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
+          body: Column(
+            children: [
+              _buildSystemStatusBar(bleService),
+              Expanded(
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: _screens,
+                ),
+              ),
+            ],
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
@@ -132,28 +181,80 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSystemStatusBar(BLEService bleService) {
+    String status = 'DISCONNECTED';
+    Color color = Colors.grey;
+    IconData icon = Icons.bluetooth_disabled;
+
+    if (bleService.isConnected) {
+      if (bleService.isSessionRunning) {
+        final quality = bleService.lastReading?.getQuality(bleService.currentIntensityMA);
+        if (quality == ConnectionQuality.poor) {
+          status = 'LEAD FAULT DETECTED';
+          color = Colors.red;
+          icon = Icons.warning_amber;
+        } else {
+          status = 'STIMULATING';
+          color = Colors.cyan;
+          icon = Icons.bolt;
+        }
+      } else {
+        status = 'SYSTEM READY';
+        color = Colors.green;
+        icon = Icons.check_circle_outline;
+      }
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      color: color.withValues(alpha: 0.15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            status,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildConnectionChip(BLEService bleService) {
     final isConnected = bleService.isConnected;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isConnected ? Colors.green : Colors.grey,
+        color: isConnected ? Colors.cyan.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isConnected ? Colors.cyan : Colors.grey,
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-            size: 16,
-            color: Colors.white,
+            size: 14,
+            color: isConnected ? Colors.cyan : Colors.grey,
           ),
           const SizedBox(width: 6),
           Text(
-            isConnected ? 'Connected' : 'Disconnected',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
+            isConnected ? 'CONNECTED' : 'OFFLINE',
+            style: TextStyle(
+              color: isConnected ? Colors.cyan : Colors.grey,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
           ),

@@ -51,7 +51,7 @@ class MonitorScreen extends StatelessWidget {
               // ADC values display
               if (bleService.lastReading != null)
                 Expanded(
-                  child: _buildADCDisplay(bleService.lastReading!),
+                  child: _buildADCDisplay(bleService),
                 )
               else
                 Expanded(
@@ -98,9 +98,22 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildADCDisplay(ADCReading reading) {
+  Widget _buildADCDisplay(BLEService bleService) {
+    final reading = bleService.lastReading!;
+    final intensity = bleService.currentIntensityMA > 0 
+        ? bleService.currentIntensityMA 
+        : 0.5; // Default reference for pre-start
+    
+    final quality = reading.getQuality(intensity);
+    final impedance = reading.calculateImpedance(intensity);
+
     return Column(
       children: [
+        // Quality & Impedance Summary
+        _buildQualityCard(quality, impedance),
+
+        const SizedBox(height: 16),
+
         // Timestamp
         Card(
           color: Colors.grey.shade100,
@@ -128,14 +141,83 @@ class MonitorScreen extends StatelessWidget {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             children: [
-              _buildADCCard('ADC 1', reading.adc1Voltage, Colors.blue),
-              _buildADCCard('ADC 2', reading.adc2Voltage, Colors.green),
-              _buildADCCard('ADC 3', reading.adc3Voltage, Colors.orange),
-              _buildADCCard('ADC 4', reading.adc4Voltage, Colors.purple),
+              _buildADCCard('Load Voltage', reading.adc1Voltage, Colors.blue),
+              _buildADCCard('Ref Voltage', reading.adc2Voltage, Colors.green),
+              _buildADCCard('CH 3', reading.adc3Voltage, Colors.orange),
+              _buildADCCard('CH 4', reading.adc4Voltage, Colors.purple),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQualityCard(ConnectionQuality quality, double? impedance) {
+    Color color;
+    String label;
+    IconData icon;
+
+    switch (quality) {
+      case ConnectionQuality.good:
+        color = Colors.green;
+        label = 'GOOD CONNECTION';
+        icon = Icons.check_circle;
+        break;
+      case ConnectionQuality.fair:
+        color = Colors.orange;
+        label = 'FAIR CONNECTION';
+        icon = Icons.warning;
+        break;
+      case ConnectionQuality.poor:
+        color = Colors.red;
+        label = 'POOR CONNECTION';
+        icon = Icons.error;
+        break;
+      case ConnectionQuality.unknown:
+        color = Colors.grey;
+        label = 'MEASURING...';
+        icon = Icons.help_outline;
+        break;
+    }
+
+    return Card(
+      color: color.withValues(alpha: 0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            if (impedance != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${impedance.toStringAsFixed(2)} kΩ',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                'Estimated Impedance',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

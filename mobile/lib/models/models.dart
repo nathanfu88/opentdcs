@@ -67,6 +67,30 @@ class ADCReading {
       timestamp: DateTime.now(),
     );
   }
+
+  /// Calculate impedance in kOhms (R = V/I)
+  /// Assumes adc1Voltage is the voltage across the electrodes
+  double? calculateImpedance(double intensityMA) {
+    if (intensityMA <= 0.05) return null; // Too low to measure accurately
+    return (adc1Voltage / intensityMA) * 1000.0; // V / mA = kOhm
+  }
+
+  /// Connection quality assessment based on impedance
+  ConnectionQuality getQuality(double intensityMA) {
+    final impedance = calculateImpedance(intensityMA);
+    if (impedance == null) return ConnectionQuality.unknown;
+    if (impedance < 10.0) return ConnectionQuality.good; // Typical target < 10k
+    if (impedance < 20.0) return ConnectionQuality.fair;
+    return ConnectionQuality.poor;
+  }
+}
+
+/// Connection quality levels
+enum ConnectionQuality {
+  unknown,
+  good,
+  fair,
+  poor,
 }
 
 /// BLE connection state (renamed to avoid conflict with Flutter's ConnectionState)
