@@ -21,30 +21,37 @@ class _ControlScreenState extends State<ControlScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         final isRunning = bleService.isSessionRunning;
 
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Connection status
               if (!bleService.isConnected)
                 Card(
-                  color: Colors.orange.shade100,
+                  color: colorScheme.errorContainer.withValues(alpha: 0.3),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning, color: Colors.orange),
+                        Icon(Icons.warning, color: colorScheme.error),
                         const SizedBox(width: 16),
                         const Expanded(child: Text('Not connected to device')),
                         ElevatedButton(
                           onPressed: () {
                             Navigator.pushNamed(context, '/connect');
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                          ),
                           child: const Text('Connect'),
                         ),
                       ],
@@ -83,10 +90,10 @@ class _ControlScreenState extends State<ControlScreen> {
                             isRunning
                                 ? '${bleService.currentIntensityMA.toStringAsFixed(2)} mA'
                                 : '${_intensityMA.toStringAsFixed(2)} mA',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.cyan,
+                              color: colorScheme.primary,
                             ),
                           ),
                         ],
@@ -103,11 +110,13 @@ class _ControlScreenState extends State<ControlScreen> {
                                   }
                                 : null,
                             icon: const Icon(Icons.remove_circle_outline),
-                            color: Colors.cyan,
+                            color: colorScheme.primary,
                           ),
                           Expanded(
                             child: Slider(
                               value: isRunning ? bleService.currentIntensityMA : _intensityMA,
+                              activeColor: colorScheme.primary,
+                              inactiveColor: colorScheme.primary.withValues(alpha: 0.2),
                               min: 0.0,
                               max: 2.0,
                               divisions: 20,
@@ -132,7 +141,7 @@ class _ControlScreenState extends State<ControlScreen> {
                                   }
                                 : null,
                             icon: const Icon(Icons.add_circle_outline),
-                            color: Colors.cyan,
+                            color: colorScheme.primary,
                           ),
                         ],
                       ),
@@ -183,11 +192,12 @@ class _ControlScreenState extends State<ControlScreen> {
                                     : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isSelected
-                                      ? Colors.cyan
-                                      : Colors.grey.shade200,
+                                      ? colorScheme.primary
+                                      : colorScheme.surfaceContainerHighest,
                                   foregroundColor: isSelected
-                                      ? Colors.white
-                                      : Colors.black,
+                                      ? colorScheme.onPrimary
+                                      : colorScheme.onSurfaceVariant,
+                                  elevation: isSelected ? 2 : 0,
                                 ),
                                 child: Text('$minutes min'),
                               ),
@@ -200,11 +210,11 @@ class _ControlScreenState extends State<ControlScreen> {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 32),
 
               // Pre-start quality check
               if (!isRunning && bleService.isConnected)
-                _buildPreStartQuality(bleService),
+                _buildPreStartQuality(context, bleService),
 
               const SizedBox(height: 16),
 
@@ -228,8 +238,8 @@ class _ControlScreenState extends State<ControlScreen> {
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 24),
-                      backgroundColor: Colors.red.shade900,
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.error,
+                      foregroundColor: colorScheme.onError,
                       elevation: 8,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -239,24 +249,26 @@ class _ControlScreenState extends State<ControlScreen> {
                 ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
-  Widget _buildPreStartQuality(BLEService bleService) {
+  Widget _buildPreStartQuality(BuildContext context, BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     final reading = bleService.lastReading;
     if (reading == null) {
-      return const Row(
+      return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
           ),
-          SizedBox(width: 8),
-          Text(
+          const SizedBox(width: 8),
+          const Text(
             'Checking lead quality...',
             style: TextStyle(color: Colors.grey),
           ),
@@ -272,22 +284,22 @@ class _ControlScreenState extends State<ControlScreen> {
 
     switch (quality) {
       case ConnectionQuality.good:
-        color = Colors.green;
+        color = colorScheme.secondary;
         label = 'Good Contact';
         icon = Icons.check_circle_outline;
         break;
       case ConnectionQuality.fair:
-        color = Colors.orange;
+        color = Colors.orangeAccent;
         label = 'Fair Contact';
         icon = Icons.info_outline;
         break;
       case ConnectionQuality.poor:
-        color = Colors.red;
+        color = colorScheme.error;
         label = 'Poor Contact';
         icon = Icons.error_outline;
         break;
       case ConnectionQuality.unknown:
-        color = Colors.grey;
+        color = colorScheme.onSurface.withValues(alpha: 0.5);
         label = 'Unknown Contact';
         icon = Icons.help_outline;
         break;
@@ -332,11 +344,13 @@ class _SwipeToStartState extends State<SwipeToStart> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Container(
       height: 70,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: widget.enabled ? Colors.grey.shade200 : Colors.grey.shade100,
+        color: widget.enabled ? colorScheme.surfaceContainerHighest : colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(35),
       ),
       child: LayoutBuilder(
@@ -394,8 +408,8 @@ class _SwipeToStartState extends State<SwipeToStart> {
                     width: 70,
                     decoration: BoxDecoration(
                       color: widget.enabled
-                          ? (_isComplete ? Colors.green : Colors.cyan)
-                          : Colors.grey,
+                          ? (_isComplete ? colorScheme.secondary : colorScheme.primary)
+                          : colorScheme.onSurface.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -407,7 +421,7 @@ class _SwipeToStartState extends State<SwipeToStart> {
                     ),
                     child: Icon(
                       _isComplete ? Icons.check : Icons.arrow_forward_ios,
-                      color: Colors.white,
+                      color: widget.enabled ? colorScheme.onPrimary : colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
                 ),
@@ -426,6 +440,8 @@ class _SessionTimerDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Selector<BLEService, (int, int)>(
       selector: (_, service) => (service.elapsedSeconds, service.sessionDurationSeconds),
       builder: (context, data, _) {
@@ -441,17 +457,17 @@ class _SessionTimerDisplay extends StatelessWidget {
         final progress = totalSeconds > 0 ? elapsedSeconds / totalSeconds : 0.0;
 
         return Card(
-          color: Colors.green.shade50,
+          color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                const Text(
+                Text(
                   'SESSION RUNNING',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: colorScheme.secondary,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -464,9 +480,9 @@ class _SessionTimerDisplay extends StatelessWidget {
                       child: CircularProgressIndicator(
                         value: progress,
                         strokeWidth: 12,
-                        backgroundColor: Colors.grey.shade300,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.green,
+                        backgroundColor: colorScheme.onSurface.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colorScheme.secondary,
                         ),
                       ),
                     ),
@@ -483,7 +499,7 @@ class _SessionTimerDisplay extends StatelessWidget {
                           'of ${totalSeconds ~/ 60} min',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade600,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],

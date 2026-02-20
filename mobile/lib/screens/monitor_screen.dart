@@ -8,6 +8,8 @@ class MonitorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         return Padding(
@@ -18,14 +20,14 @@ class MonitorScreen extends StatelessWidget {
               // Connection status
               if (!bleService.isConnected)
                 Card(
-                  color: Colors.orange.shade100,
-                  child: const Padding(
-                    padding: EdgeInsets.all(16.0),
+                  color: colorScheme.errorContainer.withValues(alpha: 0.3),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        Icon(Icons.warning, color: Colors.orange),
-                        SizedBox(width: 16),
-                        Expanded(
+                        Icon(Icons.warning, color: colorScheme.error),
+                        const SizedBox(width: 16),
+                        const Expanded(
                           child: Text('Not connected. Connect to view ADC data.'),
                         ),
                       ],
@@ -43,7 +45,7 @@ class MonitorScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Updates every 5 seconds',
-                style: TextStyle(color: Colors.grey.shade600),
+                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
 
               const SizedBox(height: 24),
@@ -51,7 +53,7 @@ class MonitorScreen extends StatelessWidget {
               // ADC values display
               if (bleService.lastReading != null)
                 Expanded(
-                  child: _buildADCDisplay(bleService),
+                  child: _buildADCDisplay(context, bleService),
                 )
               else
                 Expanded(
@@ -62,7 +64,7 @@ class MonitorScreen extends StatelessWidget {
                         Icon(
                           Icons.sensors_off,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: colorScheme.onSurface.withValues(alpha: 0.2),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -71,7 +73,7 @@ class MonitorScreen extends StatelessWidget {
                               : 'No data available',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey.shade600,
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -87,8 +89,8 @@ class MonitorScreen extends StatelessWidget {
                   label: const Text('REFRESH NOW'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(16),
-                    backgroundColor: Colors.cyan,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                   ),
                 ),
             ],
@@ -98,7 +100,8 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildADCDisplay(BLEService bleService) {
+  Widget _buildADCDisplay(BuildContext context, BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     final reading = bleService.lastReading!;
     final intensity = bleService.currentIntensityMA > 0 
         ? bleService.currentIntensityMA 
@@ -110,13 +113,13 @@ class MonitorScreen extends StatelessWidget {
     return Column(
       children: [
         // Quality & Impedance Summary
-        _buildQualityCard(quality, impedance),
+        _buildQualityCard(context, quality, impedance),
 
         const SizedBox(height: 16),
 
         // Timestamp
         Card(
-          color: Colors.grey.shade100,
+          color: colorScheme.surfaceContainerHighest,
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
@@ -141,10 +144,10 @@ class MonitorScreen extends StatelessWidget {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             children: [
-              _buildADCCard('Load Voltage', reading.adc1Voltage, Colors.blue),
-              _buildADCCard('Ref Voltage', reading.adc2Voltage, Colors.green),
-              _buildADCCard('CH 3', reading.adc3Voltage, Colors.orange),
-              _buildADCCard('CH 4', reading.adc4Voltage, Colors.purple),
+              _buildADCCard('Load Voltage', reading.adc1Voltage, colorScheme.primary),
+              _buildADCCard('Ref Voltage', reading.adc2Voltage, colorScheme.secondary),
+              _buildADCCard('CH 3', reading.adc3Voltage, Colors.orangeAccent),
+              _buildADCCard('CH 4', reading.adc4Voltage, Colors.purpleAccent),
             ],
           ),
         ),
@@ -152,29 +155,30 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQualityCard(ConnectionQuality quality, double? impedance) {
+  Widget _buildQualityCard(BuildContext context, ConnectionQuality quality, double? impedance) {
+    final colorScheme = Theme.of(context).colorScheme;
     Color color;
     String label;
     IconData icon;
 
     switch (quality) {
       case ConnectionQuality.good:
-        color = Colors.green;
+        color = colorScheme.secondary;
         label = 'GOOD CONNECTION';
         icon = Icons.check_circle;
         break;
       case ConnectionQuality.fair:
-        color = Colors.orange;
+        color = Colors.orangeAccent;
         label = 'FAIR CONNECTION';
         icon = Icons.warning;
         break;
       case ConnectionQuality.poor:
-        color = Colors.red;
+        color = colorScheme.error;
         label = 'POOR CONNECTION';
         icon = Icons.error;
         break;
       case ConnectionQuality.unknown:
-        color = Colors.grey;
+        color = colorScheme.onSurface.withValues(alpha: 0.5);
         label = 'MEASURING...';
         icon = Icons.help_outline;
         break;

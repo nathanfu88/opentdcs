@@ -8,10 +8,12 @@ class ConnectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Connect to Device'),
-        backgroundColor: Colors.cyan,
+        backgroundColor: Colors.transparent, // Let theme handle it or use transparent
       ),
       body: Consumer<BLEService>(
         builder: (context, bleService, _) {
@@ -21,7 +23,7 @@ class ConnectScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Status indicator
-                _buildStatusCard(bleService),
+                _buildStatusCard(context, bleService),
                 const SizedBox(height: 16),
 
                 // Scan button
@@ -32,8 +34,8 @@ class ConnectScreen extends StatelessWidget {
                     label: const Text('SCAN FOR DEVICES'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.all(16),
-                      backgroundColor: Colors.cyan,
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                     ),
                   ),
 
@@ -41,12 +43,12 @@ class ConnectScreen extends StatelessWidget {
 
                 // Device list
                 if (bleService.connectionState == BLEConnectionState.scanning)
-                  const Center(
+                  Center(
                     child: Column(
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Scanning for devices...'),
+                        CircularProgressIndicator(color: colorScheme.primary),
+                        const SizedBox(height: 16),
+                        const Text('Scanning for devices...'),
                       ],
                     ),
                   ),
@@ -69,9 +71,9 @@ class ConnectScreen extends StatelessWidget {
                                   bleService.discoveredDevices[index];
                               return Card(
                                 child: ListTile(
-                                  leading: const Icon(
+                                  leading: Icon(
                                     Icons.bluetooth,
-                                    color: Colors.cyan,
+                                    color: colorScheme.primary,
                                   ),
                                   title: Text(
                                     device.platformName.isNotEmpty
@@ -81,11 +83,12 @@ class ConnectScreen extends StatelessWidget {
                                   subtitle: Text(device.remoteId.toString()),
                                   trailing: bleService.connectionState ==
                                           BLEConnectionState.connecting
-                                      ? const SizedBox(
+                                      ? SizedBox(
                                           width: 24,
                                           height: 24,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2,
+                                            color: colorScheme.primary,
                                           ),
                                         )
                                       : const Icon(Icons.arrow_forward_ios),
@@ -140,7 +143,8 @@ class ConnectScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusCard(BLEService bleService) {
+  Widget _buildStatusCard(BuildContext context, BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     String status;
     Color color;
     IconData icon;
@@ -148,27 +152,27 @@ class ConnectScreen extends StatelessWidget {
     switch (bleService.connectionState) {
       case BLEConnectionState.disconnected:
         status = 'Disconnected';
-        color = Colors.grey;
+        color = colorScheme.onSurface.withValues(alpha: 0.5);
         icon = Icons.bluetooth_disabled;
         break;
       case BLEConnectionState.scanning:
         status = 'Scanning...';
-        color = Colors.blue;
+        color = colorScheme.primary;
         icon = Icons.bluetooth_searching;
         break;
       case BLEConnectionState.connecting:
         status = 'Connecting...';
-        color = Colors.orange;
+        color = Colors.orangeAccent;
         icon = Icons.bluetooth_connected;
         break;
       case BLEConnectionState.connected:
         status = 'Connected to ${bleService.connectedDevice?.platformName}';
-        color = Colors.green;
+        color = colorScheme.secondary;
         icon = Icons.bluetooth_connected;
         break;
       case BLEConnectionState.error:
         status = 'Error';
-        color = Colors.red;
+        color = colorScheme.error;
         icon = Icons.error;
         break;
     }

@@ -24,34 +24,35 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.black,
-          primarySwatch: Colors.cyan,
+          scaffoldBackgroundColor: const Color(0xFF0D1117), // Dark blue-grey background
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.cyan,
+            seedColor: Colors.blueGrey,
             brightness: Brightness.dark,
-            surface: const Color(0xFF121212),
-            onSurface: Colors.white,
-            primary: Colors.cyan,
-            secondary: Colors.amber,
+            surface: const Color(0xFF161B22), // Slightly lighter surface
+            onSurface: const Color(0xFFC9D1D9), // Milder white
+            primary: const Color(0xFF58A6FF), // Soft blue
+            secondary: const Color(0xFF3FB950), // Milder green
+            onPrimary: Colors.white,
+            onSecondary: Colors.white,
           ),
           cardTheme: CardThemeData(
-            color: const Color(0xFF1A1A1A),
+            color: const Color(0xFF21262D),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+              side: const BorderSide(color: Color(0xFF30363D)),
             ),
           ),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
+            backgroundColor: Color(0xFF0D1117),
+            foregroundColor: Color(0xFFC9D1D9),
             elevation: 0,
             centerTitle: true,
           ),
           bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Colors.black,
-            selectedItemColor: Colors.cyan,
-            unselectedItemColor: Colors.grey,
+            backgroundColor: Color(0xFF0D1117),
+            selectedItemColor: Color(0xFF58A6FF),
+            unselectedItemColor: Color(0xFF8B949E),
             type: BottomNavigationBarType.fixed,
             elevation: 0,
           ),
@@ -91,13 +92,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         return Scaffold(
           appBar: AppBar(
             title: const Text('opentDCS'),
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
+            backgroundColor: theme.scaffoldBackgroundColor,
+            foregroundColor: colorScheme.onSurface,
             actions: [
               // Connection status indicator
               Padding(
@@ -164,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _currentIndex = index;
               });
             },
-            selectedItemColor: Colors.cyan,
+            selectedItemColor: colorScheme.primary,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.control_camera),
@@ -182,8 +186,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSystemStatusBar(BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     String status = 'DISCONNECTED';
-    Color color = Colors.grey;
+    Color color = colorScheme.onSurface.withValues(alpha: 0.5);
     IconData icon = Icons.bluetooth_disabled;
 
     if (bleService.isConnected) {
@@ -191,16 +196,16 @@ class _HomeScreenState extends State<HomeScreen> {
         final quality = bleService.lastReading?.getQuality(bleService.currentIntensityMA);
         if (quality == ConnectionQuality.poor) {
           status = 'LEAD FAULT DETECTED';
-          color = Colors.red;
+          color = Colors.orangeAccent;
           icon = Icons.warning_amber;
         } else {
           status = 'STIMULATING';
-          color = Colors.cyan;
+          color = colorScheme.primary;
           icon = Icons.bolt;
         }
       } else {
         status = 'SYSTEM READY';
-        color = Colors.green;
+        color = colorScheme.secondary;
         icon = Icons.check_circle_outline;
       }
     }
@@ -230,14 +235,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildConnectionChip(BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isConnected = bleService.isConnected;
+    final color = isConnected ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.4);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isConnected ? Colors.cyan.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isConnected ? Colors.cyan : Colors.grey,
+          color: color,
           width: 1,
         ),
       ),
@@ -247,13 +255,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
             size: 14,
-            color: isConnected ? Colors.cyan : Colors.grey,
+            color: color,
           ),
           const SizedBox(width: 6),
           Text(
             isConnected ? 'CONNECTED' : 'OFFLINE',
             style: TextStyle(
-              color: isConnected ? Colors.cyan : Colors.grey,
+              color: color,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
