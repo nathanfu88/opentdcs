@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color = Colors.orangeAccent;
           icon = Icons.warning_amber;
         } else {
-          status = 'STIMULATING';
+          status = 'RUNNING';
           color = colorScheme.primary;
           icon = Icons.bolt;
         }
