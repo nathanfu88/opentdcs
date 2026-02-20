@@ -23,44 +23,42 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: const Color(0xFF0D1117), // Dark blue-grey background
+          brightness: Brightness.light,
+          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.blueGrey,
-            brightness: Brightness.dark,
-            surface: const Color(0xFF161B22), // Slightly lighter surface
-            onSurface: const Color(0xFFC9D1D9), // Milder white
-            primary: const Color(0xFF58A6FF), // Soft blue
-            secondary: const Color(0xFF3FB950), // Milder green
+            brightness: Brightness.light,
+            surface: Colors.white,
+            onSurface: const Color(0xFF212529),
+            primary: const Color(0xFF0056B3),
+            secondary: const Color(0xFF28A745),
             onPrimary: Colors.white,
             onSecondary: Colors.white,
           ),
           cardTheme: CardThemeData(
-            color: const Color(0xFF21262D),
-            elevation: 0,
+            color: Colors.white,
+            elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Color(0xFF30363D)),
+              side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
             ),
           ),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF0D1117),
-            foregroundColor: Color(0xFFC9D1D9),
+            backgroundColor: Colors.white,
+            foregroundColor: Color(0xFF212529),
             elevation: 0,
             centerTitle: true,
           ),
           bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Color(0xFF0D1117),
-            selectedItemColor: Color(0xFF58A6FF),
-            unselectedItemColor: Color(0xFF8B949E),
+            backgroundColor: Colors.white,
+            selectedItemColor: Color(0xFF0056B3),
+            unselectedItemColor: Color(0xFF6C757D),
             type: BottomNavigationBarType.fixed,
-            elevation: 0,
+            elevation: 8,
           ),
         ),
         home: const HomeScreen(),
-        routes: {
-          '/connect': (context) => const ConnectScreen(),
-        },
+        routes: {'/connect': (context) => const ConnectScreen()},
       ),
     );
   }
@@ -76,10 +74,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    ControlScreen(),
-    MonitorScreen(),
-  ];
+  final List<Widget> _screens = const [ControlScreen(), MonitorScreen()];
 
   @override
   void initState() {
@@ -94,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         return Scaffold(
@@ -106,9 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Connection status indicator
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: Center(
-                  child: _buildConnectionChip(bleService),
-                ),
+                child: Center(child: _buildConnectionChip(bleService)),
               ),
               // Disconnect/Connect button
               if (bleService.isConnected)
@@ -154,10 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildSystemStatusBar(bleService),
               Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: _screens,
-                ),
+                child: IndexedStack(index: _currentIndex, children: _screens),
               ),
             ],
           ),
@@ -193,7 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (bleService.isConnected) {
       if (bleService.isSessionRunning) {
-        final quality = bleService.lastReading?.getQuality(bleService.currentIntensityMA);
+        final quality = bleService.lastReading?.getQuality(
+          bleService.currentIntensityMA,
+        );
         if (quality == ConnectionQuality.poor) {
           status = 'LEAD FAULT DETECTED';
           color = Colors.orangeAccent;
@@ -237,17 +229,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildConnectionChip(BLEService bleService) {
     final colorScheme = Theme.of(context).colorScheme;
     final isConnected = bleService.isConnected;
-    final color = isConnected ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.4);
+    final color = isConnected
+        ? colorScheme.primary
+        : colorScheme.onSurface.withValues(alpha: 0.4);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color,
-          width: 1,
-        ),
+        border: Border.all(color: color, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
