@@ -42,11 +42,17 @@ class MonitorScreen extends StatelessWidget {
                 'ADC Readings',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Updates every 5 seconds',
-                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
-              ),
+              if (bleService.lastReading != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Last updated: ${_formatTime(bleService.lastReading!.timestamp)}',
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 24),
 
@@ -114,26 +120,6 @@ class MonitorScreen extends StatelessWidget {
       children: [
         // Quality & Impedance Summary
         _buildQualityCard(context, quality, impedance),
-
-        const SizedBox(height: 16),
-
-        // Timestamp
-        Card(
-          color: colorScheme.surfaceContainerHighest,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                const Icon(Icons.access_time, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Last updated: ${_formatTime(reading.timestamp)}',
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
 
         const SizedBox(height: 16),
 

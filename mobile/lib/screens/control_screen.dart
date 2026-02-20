@@ -67,6 +67,30 @@ class _ControlScreenState extends State<ControlScreen> {
               else
                 const SizedBox.shrink(),
 
+              if (isRunning) ...[
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => bleService.stopSession(),
+                    icon: const Icon(Icons.stop, size: 40),
+                    label: const Text(
+                      'EMERGENCY STOP',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      backgroundColor: colorScheme.error,
+                      foregroundColor: colorScheme.onError,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               // Intensity control
@@ -225,27 +249,6 @@ class _ControlScreenState extends State<ControlScreen> {
                       ? () => bleService.startSession(_intensityMA, _durationMinutes)
                       : null,
                   enabled: bleService.isConnected,
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => bleService.stopSession(),
-                    icon: const Icon(Icons.stop, size: 40),
-                    label: const Text(
-                      'EMERGENCY STOP',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      backgroundColor: colorScheme.error,
-                      foregroundColor: colorScheme.onError,
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
                 ),
             ],
           ),
