@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/ble_service.dart';
+import '../services/electrical_calculator.dart';
 import '../models/models.dart';
 
 class MonitorScreen extends StatelessWidget {
+  /// Current used for impedance/quality calculations when session is idle (0mA)
+  static const double _idleReferenceCurrentMA = 0.5;
+
   const MonitorScreen({super.key});
 
   @override
@@ -28,7 +32,9 @@ class MonitorScreen extends StatelessWidget {
                         Icon(Icons.warning, color: colorScheme.error),
                         const SizedBox(width: 16),
                         const Expanded(
-                          child: Text('Not connected. Connect to view ADC data.'),
+                          child: Text(
+                            'Not connected. Connect to view ADC data.',
+                          ),
                         ),
                       ],
                     ),
@@ -58,9 +64,7 @@ class MonitorScreen extends StatelessWidget {
 
               // ADC values display
               if (bleService.lastReading != null)
-                Expanded(
-                  child: _buildADCDisplay(context, bleService),
-                )
+                Expanded(child: _buildADCDisplay(context, bleService))
               else
                 Expanded(
                   child: Center(
@@ -109,31 +113,55 @@ class MonitorScreen extends StatelessWidget {
   Widget _buildADCDisplay(BuildContext context, BLEService bleService) {
     final colorScheme = Theme.of(context).colorScheme;
     final reading = bleService.lastReading!;
-    final intensity = bleService.currentIntensityMA > 0 
-        ? bleService.currentIntensityMA 
-        : 0.5; // Default reference for pre-start
-    
-    final quality = reading.getQuality(intensity);
-    final impedance = reading.calculateImpedance(intensity);
+    final intensity = bleService.currentIntensityMA > 0
+        ? bleService.currentIntensityMA
+        : 0.0;
+
+    // Use actual intensity or default reference for calculations
+    final referenceCurrent = intensity > 0 ? intensity : _idleReferenceCurrentMA;
+
+    final calculator = ElectricalCalculator(
+      reading: reading,
+      targetCurrentMA: referenceCurrent,
+    );
+
+    final quality = reading.getQuality(referenceCurrent);
 
     return Column(
       children: [
         // Quality & Impedance Summary
-        _buildQualityCard(context, quality, impedance),
+        _buildQualityCard(context, quality, calculator.loadResistanceKOhms),
 
         const SizedBox(height: 16),
 
-        // ADC values
+        // Calculated Values Grid
         Expanded(
           child: GridView.count(
             crossAxisCount: 2,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
+            childAspectRatio: 1.1,
             children: [
-              _buildADCCard('Load Voltage', reading.adc1Voltage, colorScheme.primary),
-              _buildADCCard('Ref Voltage', reading.adc2Voltage, colorScheme.secondary),
-              _buildADCCard('CH 3', reading.adc3Voltage, Colors.orangeAccent),
-              _buildADCCard('CH 4', reading.adc4Voltage, Colors.purpleAccent),
+              _buildADCCard(
+                'Source Voltage',
+                '${calculator.sourceVoltage.toStringAsFixed(2)} V',
+                colorScheme.secondary,
+              ),
+              _buildADCCard(
+                'Current',
+                '${calculator.loadCurrentMA.toStringAsFixed(2)} mA',
+                colorScheme.primary,
+              ),
+              _buildADCCard(
+                'Load Voltage',
+                '${calculator.loadVoltage.toStringAsFixed(2)} V',
+                Colors.orangeAccent,
+              ),
+              _buildADCCard(
+                'Resistance',
+                '${calculator.loadResistanceKOhms.toStringAsFixed(1)} kΩ',
+                Colors.purpleAccent,
+              ),
             ],
           ),
         ),
@@ -141,7 +169,11 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQualityCard(BuildContext context, ConnectionQuality quality, double? impedance) {
+  Widget _buildQualityCard(
+    BuildContext context,
+    ConnectionQuality quality,
+    double? impedance,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
     Color color;
     String label;
@@ -211,7 +243,7 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildADCCard(String label, double voltage, Color color) {
+  Widget _buildADCCard(String label, String value, Color color) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -222,26 +254,16 @@ class MonitorScreen extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              voltage.toStringAsFixed(3),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Volts',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              value,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Container(
