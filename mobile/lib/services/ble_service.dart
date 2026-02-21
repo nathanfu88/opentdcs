@@ -18,6 +18,7 @@ class BLEService extends ChangeNotifier {
 
   // Safety constants
   static const double maxCurrentMA = 2.0;
+  static const double defaultIntensityMA = 0.5;
   static const int dacEnableCommand = 254;
   static const int dacDisableCommand = 253;
   static const int dacOffValue = 255;

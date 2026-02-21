@@ -5,9 +5,6 @@ import '../services/electrical_calculator.dart';
 import '../models/models.dart';
 
 class MonitorScreen extends StatelessWidget {
-  /// Current used for impedance/quality calculations when session is idle (0mA)
-  static const double _idleReferenceCurrentMA = 0.5;
-
   const MonitorScreen({super.key});
 
   @override
@@ -129,14 +126,14 @@ class MonitorScreen extends StatelessWidget {
         ? bleService.currentIntensityMA
         : 0.0;
 
-    final referenceCurrent = intensity > 0 ? intensity : _idleReferenceCurrentMA;
+    final referenceCurrent = intensity > 0 ? intensity : BLEService.defaultIntensityMA;
 
     final calculator = ElectricalCalculator(
       reading: reading,
       targetCurrentMA: referenceCurrent,
     );
 
-    final quality = reading.getQuality(referenceCurrent);
+    final quality = calculator.getQuality();
 
     return ListView(
       physics: const BouncingScrollPhysics(),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/ble_service.dart';
+import '../services/electrical_calculator.dart';
 import '../models/models.dart';
 
 class ControlScreen extends StatefulWidget {
@@ -13,7 +14,7 @@ class ControlScreen extends StatefulWidget {
 
 class _ControlScreenState extends State<ControlScreen> {
   // Session configuration (local until start)
-  double _intensityMA = 0.5;
+  double _intensityMA = BLEService.defaultIntensityMA;
   int _durationMinutes = 20;
 
   // Duration presets
@@ -135,7 +136,11 @@ class _ControlScreenState extends State<ControlScreen> {
       );
     }
 
-    final quality = reading.getQuality(_intensityMA > 0.1 ? _intensityMA : 0.5);
+    final quality = ElectricalCalculator(
+      reading: reading,
+      targetCurrentMA: _intensityMA > 0.1 ? _intensityMA : BLEService.defaultIntensityMA,
+    ).getQuality();
+
     Color color;
     String label;
     IconData icon;
@@ -200,9 +205,14 @@ class _SystemStatusBanner extends StatelessWidget {
     IconData icon = Icons.check_circle_outline;
 
     if (bleService.isSessionRunning) {
-      final quality = bleService.lastReading?.getQuality(
-        bleService.currentIntensityMA,
-      );
+      final reading = bleService.lastReading;
+      final quality = reading != null
+          ? ElectricalCalculator(
+              reading: reading,
+              targetCurrentMA: bleService.currentIntensityMA,
+            ).getQuality()
+          : ConnectionQuality.unknown;
+
       if (quality == ConnectionQuality.poor) {
         status = 'LEAD FAULT DETECTED';
         color = colorScheme.error;
