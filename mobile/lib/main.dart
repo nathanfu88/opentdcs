@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
           ),
           cardTheme: CardThemeData(
             elevation: 0,
-           q shape: RoundedRectangleBorder(
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
               side: const BorderSide(color: Color(0x1F000000), width: 0.5),
             ),
@@ -55,14 +55,18 @@ class MyApp extends StatelessWidget {
           ),
           segmentedButtonTheme: SegmentedButtonThemeData(
             style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: const Color(0xFF0056B3).withValues(alpha: 0.1),
+              selectedBackgroundColor: const Color(
+                0xFF0056B3,
+              ).withValues(alpha: 0.1),
               selectedForegroundColor: const Color(0xFF0056B3),
             ),
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ),
@@ -167,7 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _showDisconnectDialog(BuildContext context, BLEService bleService) async {
+  Future<void> _showDisconnectDialog(
+    BuildContext context,
+    BLEService bleService,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -193,4 +200,3 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 }
-
