@@ -10,6 +10,13 @@ This monorepo contains the following components:
 - **[kicad/](kicad/)**: Hardware design (schematics and PCB layout).
 - **[mobile/](mobile/)**: Mobile application for controlling the device via BLE.
 
+## Circuit
+### Core Circuit
+![Core circuit](img/main_circuit.png)
+
+### Power Management Circuit
+![Power circuit](img/power_circuit.png)
+
 ## Bill of Materials (BOM)
 
 The following hardware components are required for the opentDCS project. 
