@@ -6,6 +6,7 @@ import 'screens/control_screen.dart';
 import 'screens/monitor_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -17,16 +18,56 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => BLEService(),
       child: MaterialApp(
-        title: 'tDCS Control',
+        title: 'opentDCS',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          primarySwatch: Colors.cyan,
           useMaterial3: true,
+          brightness: Brightness.light,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF0056B3),
+            primary: const Color(0xFF0056B3),
+            onPrimary: Colors.white,
+            secondary: const Color(0xFF28A745),
+            onSecondary: Colors.white,
+            error: const Color(0xFFBA1A1A),
+            surface: const Color(0xFFFDFBFF),
+            surfaceContainerLow: Colors.white,
+            surfaceContainer: const Color(0xFFF3F4F9),
+            surfaceContainerHigh: const Color(0xFFE9ECEF),
+            outlineVariant: const Color(0xFFC4C7CF),
+          ),
+          cardTheme: CardThemeData(
+            elevation: 0,
+           q shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: const BorderSide(color: Color(0x1F000000), width: 0.5),
+            ),
+          ),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFFFDFBFF),
+            scrolledUnderElevation: 0,
+            centerTitle: true,
+            titleTextStyle: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B1B1F),
+            ),
+          ),
+          segmentedButtonTheme: SegmentedButtonThemeData(
+            style: SegmentedButton.styleFrom(
+              selectedBackgroundColor: const Color(0xFF0056B3).withValues(alpha: 0.1),
+              selectedForegroundColor: const Color(0xFF0056B3),
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
         ),
         home: const HomeScreen(),
-        routes: {
-          '/connect': (context) => const ConnectScreen(),
-        },
+        routes: {'/connect': (context) => const ConnectScreen()},
       ),
     );
   }
@@ -42,87 +83,57 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    ControlScreen(),
-    MonitorScreen(),
-  ];
+  final List<Widget> _screens = const [ControlScreen(), MonitorScreen()];
+
+  @override
+  void initState() {
+    super.initState();
+    // Attempt to auto-reconnect to last device on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<BLEService>().autoConnect();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('tDCS Control'),
-            backgroundColor: Colors.cyan,
-            foregroundColor: Colors.white,
+            title: const Text(
+              'opentDCS',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            ),
+            backgroundColor: theme.scaffoldBackgroundColor,
+            foregroundColor: colorScheme.onSurface,
             actions: [
               // Connection status indicator
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: Center(
-                  child: _buildConnectionChip(bleService),
-                ),
+                child: _buildConnectionStatus(bleService),
               ),
-              // Disconnect/Connect button
-              if (bleService.isConnected)
-                IconButton(
-                  icon: const Icon(Icons.bluetooth_disabled),
-                  tooltip: 'Disconnect',
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Disconnect?'),
-                        content: const Text(
-                          'Are you sure you want to disconnect from the device?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('CANCEL'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('DISCONNECT'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      await bleService.disconnect();
-                    }
-                  },
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.bluetooth),
-                  tooltip: 'Connect',
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/connect');
-                  },
-                ),
             ],
           ),
-          body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
+          body: IndexedStack(index: _currentIndex, children: _screens),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
-            selectedItemColor: Colors.cyan,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.control_camera),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.tune),
+                selectedIcon: Icon(Icons.tune),
                 label: 'Control',
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.monitor_heart),
+              NavigationDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics),
                 label: 'Monitor',
               ),
             ],
@@ -132,33 +143,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildConnectionChip(BLEService bleService) {
+  Widget _buildConnectionStatus(BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isConnected = bleService.isConnected;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isConnected ? Colors.green : Colors.grey,
-        borderRadius: BorderRadius.circular(16),
+
+    return IconButton(
+      onPressed: () {
+        if (isConnected) {
+          _showDisconnectDialog(context, bleService);
+        } else {
+          Navigator.pushNamed(context, '/connect');
+        }
+      },
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: Icon(
+          isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+          key: ValueKey(isConnected),
+          color: isConnected ? colorScheme.primary : colorScheme.error,
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-            size: 16,
-            color: Colors.white,
+      tooltip: isConnected ? 'Connected' : 'Disconnected',
+    );
+  }
+
+  Future<void> _showDisconnectDialog(BuildContext context, BLEService bleService) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Disconnect?'),
+        content: const Text(
+          'Stop current session and disconnect from the device?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
           ),
-          const SizedBox(width: 6),
-          Text(
-            isConnected ? 'Connected' : 'Disconnected',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DISCONNECT'),
           ),
         ],
       ),
     );
+    if (confirm == true) {
+      await bleService.disconnect();
+    }
   }
 }
+

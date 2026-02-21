@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 /// Core BLE service for ESP32 tDCS communication
 /// Implements Option B: Lean production with safety validation
 class BLEService extends ChangeNotifier {
+  // Persistence keys
+  static const String _lastDeviceKey = 'last_connected_device_id';
+
   // BLE Configuration
   static const String _serviceUuid = '000000ff-0000-1000-8000-00805f9b34fb';
   static const String _characteristicUuid =
@@ -26,6 +31,13 @@ class BLEService extends ChangeNotifier {
   Timer? _adcPollTimer;
   ADCReading? _lastReading;
 
+  // Session State
+  SessionState _sessionState = SessionState.idle;
+  int _elapsedSeconds = 0;
+  int _sessionDurationSeconds = 0;
+  Timer? _sessionTimer;
+  double _currentIntensityMA = 0.0;
+
   // Getters
   BLEConnectionState get connectionState => _connectionState;
   String? get errorMessage => _errorMessage;
@@ -33,6 +45,28 @@ class BLEService extends ChangeNotifier {
   BluetoothDevice? get connectedDevice => _device;
   ADCReading? get lastReading => _lastReading;
   bool get isConnected => _connectionState == BLEConnectionState.connected;
+  
+  SessionState get sessionState => _sessionState;
+  int get elapsedSeconds => _elapsedSeconds;
+  int get sessionDurationSeconds => _sessionDurationSeconds;
+  double get currentIntensityMA => _currentIntensityMA;
+  bool get isSessionRunning => _sessionState == SessionState.running;
+
+  /// Attempt to reconnect to the last used device
+  Future<void> autoConnect() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastId = prefs.getString(_lastDeviceKey);
+
+      if (lastId != null && _connectionState == BLEConnectionState.disconnected) {
+        debugPrint('Attempting auto-connect to $lastId');
+        final device = BluetoothDevice.fromId(lastId);
+        await connect(device);
+      }
+    } catch (e) {
+      debugPrint('Auto-connect failed: $e');
+    }
+  }
 
   /// Scan for ESP32 devices
   Future<void> scanForDevices() async {
@@ -108,8 +142,14 @@ class BLEService extends ChangeNotifier {
         await _characteristic!.setNotifyValue(true);
       }
 
+      // Save device ID for auto-reconnect
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastDeviceKey, device.remoteId.toString());
+
       _setConnectionState(BLEConnectionState.connected);
-      _startADCPolling();
+      _startADCPolling(const Duration(seconds: 5)); // Initial idle polling
+      
+      HapticFeedback.mediumImpact();
       return true;
     } catch (e) {
       _setError('Connection failed: $e');
@@ -121,6 +161,7 @@ class BLEService extends ChangeNotifier {
   /// Disconnect from device
   Future<void> disconnect() async {
     try {
+      await stopSession();
       _stopADCPolling();
       await _device?.disconnect();
       _device = null;
@@ -130,6 +171,72 @@ class BLEService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Disconnect error: $e');
     }
+  }
+
+  /// Start a stimulation session
+  Future<bool> startSession(double intensityMA, int durationMinutes) async {
+    if (!isConnected) return false;
+
+    // 1. Enable DAC
+    final enabled = await enableDAC();
+    if (!enabled) {
+      HapticFeedback.vibrate();
+      return false;
+    }
+
+    // 2. Set intensity
+    final setIntensitySuccess = await setIntensity(intensityMA);
+    if (!setIntensitySuccess) {
+      await disableDAC();
+      HapticFeedback.vibrate();
+      return false;
+    }
+
+    // 3. Initialize state
+    _sessionState = SessionState.running;
+    _elapsedSeconds = 0;
+    _sessionDurationSeconds = durationMinutes * 60;
+    _currentIntensityMA = intensityMA;
+
+    // 4. Update polling frequency to 1s for safety during stimulation
+    _startADCPolling(const Duration(seconds: 1));
+
+    // 5. Start session timer
+    _sessionTimer?.cancel();
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _elapsedSeconds++;
+      
+      if (_elapsedSeconds >= _sessionDurationSeconds) {
+        stopSession();
+      }
+      notifyListeners();
+    });
+
+    HapticFeedback.heavyImpact();
+    notifyListeners();
+    return true;
+  }
+
+  /// Stop the current session
+  Future<void> stopSession() async {
+    _sessionTimer?.cancel();
+    _sessionTimer = null;
+
+    if (isConnected) {
+      await setIntensity(0.0);
+      await disableDAC();
+      // Revert to slower polling when idle
+      _startADCPolling(const Duration(seconds: 5));
+    }
+
+    if (_sessionState == SessionState.running) {
+      HapticFeedback.mediumImpact();
+    }
+
+    _sessionState = SessionState.idle;
+    _elapsedSeconds = 0;
+    _currentIntensityMA = 0.0;
+    notifyListeners();
   }
 
   /// Set intensity (0-2mA)
@@ -148,6 +255,9 @@ class BLEService extends ChangeNotifier {
     try {
       final dacValue = _currentToDAC(currentMA);
       await _writeDAC(dacValue);
+      _currentIntensityMA = currentMA;
+      HapticFeedback.selectionClick();
+      notifyListeners();
       return true;
     } catch (e) {
       _setError('Failed to set intensity: $e');
@@ -202,10 +312,10 @@ class BLEService extends ChangeNotifier {
     }
   }
 
-  /// Start automatic ADC polling (every 5 seconds)
-  void _startADCPolling() {
+  /// Start automatic ADC polling with specific interval
+  void _startADCPolling(Duration interval) {
     _stopADCPolling();
-    _adcPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _adcPollTimer = Timer.periodic(interval, (_) {
       readADC();
     });
   }
