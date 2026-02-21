@@ -1,23 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/models/models.dart';
-import '../lib/services/electrical_calculator.dart';
+import 'package:opentdcs_mobile/models/models.dart';
+import 'package:opentdcs_mobile/services/electrical_calculator.dart';
 
 void main() {
   group('ElectricalCalculator Tests (Uniform 39k/10k Dividers)', () {
     test('Calculates load values correctly from new ratios', () {
       // Setup with new common ratio: 10/49 ~ 0.20408
       const double ratio = 10 / 49;
-      
+
       // Assume:
       // V_supply (14.4V) scaled: 14.4 * ratio ~ 2.9388 V
       // V_shunt_lo (14.0V) scaled: 14.0 * ratio ~ 2.8571 V
       // V_load_lo (2.5V) scaled: 2.5 * ratio ~ 0.5102 V
-      
+
       final reading = ADCReading(
         adc1Voltage: 14.4 * ratio, // A0 (Source)
         adc2Voltage: 14.0 * ratio, // A1 (Top of load)
-        adc3Voltage: 2.5 * ratio,  // A2 (Bottom of load)
-        adc4Voltage: 4.2 * 0.5,     // A3 (Battery, 0.5 ratio)
+        adc3Voltage: 2.5 * ratio, // A2 (Bottom of load)
+        adc4Voltage: 4.2 * 0.5, // A3 (Battery, 0.5 ratio)
         timestamp: DateTime.now(),
       );
 
@@ -47,7 +47,7 @@ void main() {
 
     test('Handles low current/disconnected state', () {
       const double ratio = 10 / 49;
-      
+
       final reading = ADCReading(
         adc1Voltage: 14.4 * ratio,
         adc2Voltage: 14.4 * ratio, // No drop over shunt
