@@ -14,7 +14,7 @@ class ControlScreen extends StatefulWidget {
 
 class _ControlScreenState extends State<ControlScreen> {
   // Session configuration (local until start)
-  double _intensityMA = 0.5;
+  double _intensityMA = BLEService.defaultIntensityMA;
   int _durationMinutes = 20;
 
   // Duration presets
@@ -138,7 +138,7 @@ class _ControlScreenState extends State<ControlScreen> {
 
     final quality = ElectricalCalculator(
       reading: reading,
-      targetCurrentMA: _intensityMA > 0.1 ? _intensityMA : 0.5,
+      targetCurrentMA: _intensityMA > 0.1 ? _intensityMA : BLEService.defaultIntensityMA,
     ).getQuality();
 
     Color color;
