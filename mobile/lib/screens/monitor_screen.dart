@@ -136,7 +136,7 @@ class MonitorScreen extends StatelessWidget {
       targetCurrentMA: referenceCurrent,
     );
 
-    final quality = reading.getQuality(referenceCurrent);
+    final quality = calculator.getQuality();
 
     return ListView(
       physics: const BouncingScrollPhysics(),
