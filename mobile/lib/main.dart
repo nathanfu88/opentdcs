@@ -4,7 +4,6 @@ import 'services/ble_service.dart';
 import 'screens/connect_screen.dart';
 import 'screens/control_screen.dart';
 import 'screens/monitor_screen.dart';
-import 'models/models.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,37 +23,47 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.light,
-          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blueGrey,
-            brightness: Brightness.light,
-            surface: Colors.white,
-            onSurface: const Color(0xFF212529),
+            seedColor: const Color(0xFF0056B3),
             primary: const Color(0xFF0056B3),
-            secondary: const Color(0xFF28A745),
             onPrimary: Colors.white,
+            secondary: const Color(0xFF28A745),
             onSecondary: Colors.white,
+            error: const Color(0xFFBA1A1A),
+            surface: const Color(0xFFFDFBFF),
+            surfaceContainerLow: Colors.white,
+            surfaceContainer: const Color(0xFFF3F4F9),
+            surfaceContainerHigh: const Color(0xFFE9ECEF),
+            outlineVariant: const Color(0xFFC4C7CF),
           ),
           cardTheme: CardThemeData(
-            color: Colors.white,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+            elevation: 0,
+           q shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: const BorderSide(color: Color(0x1F000000), width: 0.5),
             ),
           ),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF212529),
-            elevation: 0,
+            backgroundColor: Color(0xFFFDFBFF),
+            scrolledUnderElevation: 0,
             centerTitle: true,
+            titleTextStyle: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B1B1F),
+            ),
           ),
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Colors.white,
-            selectedItemColor: Color(0xFF0056B3),
-            unselectedItemColor: Color(0xFF6C757D),
-            type: BottomNavigationBarType.fixed,
-            elevation: 8,
+          segmentedButtonTheme: SegmentedButtonThemeData(
+            style: SegmentedButton.styleFrom(
+              selectedBackgroundColor: const Color(0xFF0056B3).withValues(alpha: 0.1),
+              selectedForegroundColor: const Color(0xFF0056B3),
+            ),
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
           ),
         ),
         home: const HomeScreen(),
@@ -94,78 +103,37 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, bleService, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('opentDCS'),
+            title: const Text(
+              'opentDCS',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            ),
             backgroundColor: theme.scaffoldBackgroundColor,
             foregroundColor: colorScheme.onSurface,
             actions: [
               // Connection status indicator
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: Center(child: _buildConnectionChip(bleService)),
-              ),
-              // Disconnect/Connect button
-              if (bleService.isConnected)
-                IconButton(
-                  icon: const Icon(Icons.bluetooth_disabled),
-                  tooltip: 'Disconnect',
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Disconnect?'),
-                        content: const Text(
-                          'Are you sure you want to disconnect from the device?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('CANCEL'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('DISCONNECT'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      await bleService.disconnect();
-                    }
-                  },
-                )
-              else
-                IconButton(
-                  icon: const Icon(Icons.bluetooth),
-                  tooltip: 'Connect',
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/connect');
-                  },
-                ),
-            ],
-          ),
-          body: Column(
-            children: [
-              _buildSystemStatusBar(bleService),
-              Expanded(
-                child: IndexedStack(index: _currentIndex, children: _screens),
+                child: _buildConnectionStatus(bleService),
               ),
             ],
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
+          body: IndexedStack(index: _currentIndex, children: _screens),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
-            selectedItemColor: colorScheme.primary,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.control_camera),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.tune),
+                selectedIcon: Icon(Icons.tune),
                 label: 'Control',
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.monitor_heart),
+              NavigationDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics),
                 label: 'Monitor',
               ),
             ],
@@ -175,90 +143,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSystemStatusBar(BLEService bleService) {
-    final colorScheme = Theme.of(context).colorScheme;
-    String status = 'DISCONNECTED';
-    Color color = colorScheme.onSurface.withValues(alpha: 0.5);
-    IconData icon = Icons.bluetooth_disabled;
-
-    if (bleService.isConnected) {
-      if (bleService.isSessionRunning) {
-        final quality = bleService.lastReading?.getQuality(
-          bleService.currentIntensityMA,
-        );
-        if (quality == ConnectionQuality.poor) {
-          status = 'LEAD FAULT DETECTED';
-          color = Colors.orangeAccent;
-          icon = Icons.warning_amber;
-        } else {
-          status = 'RUNNING';
-          color = colorScheme.primary;
-          icon = Icons.bolt;
-        }
-      } else {
-        status = 'SYSTEM READY';
-        color = colorScheme.secondary;
-        icon = Icons.check_circle_outline;
-      }
-    }
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      color: color.withValues(alpha: 0.15),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConnectionChip(BLEService bleService) {
+  Widget _buildConnectionStatus(BLEService bleService) {
     final colorScheme = Theme.of(context).colorScheme;
     final isConnected = bleService.isConnected;
-    final color = isConnected
-        ? colorScheme.primary
-        : colorScheme.onSurface.withValues(alpha: 0.4);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color, width: 1),
+    return IconButton(
+      onPressed: () {
+        if (isConnected) {
+          _showDisconnectDialog(context, bleService);
+        } else {
+          Navigator.pushNamed(context, '/connect');
+        }
+      },
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: Icon(
+          isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+          key: ValueKey(isConnected),
+          color: isConnected ? colorScheme.primary : colorScheme.error,
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-            size: 14,
-            color: color,
+      tooltip: isConnected ? 'Connected' : 'Disconnected',
+    );
+  }
+
+  Future<void> _showDisconnectDialog(BuildContext context, BLEService bleService) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Disconnect?'),
+        content: const Text(
+          'Stop current session and disconnect from the device?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
           ),
-          const SizedBox(width: 6),
-          Text(
-            isConnected ? 'CONNECTED' : 'OFFLINE',
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DISCONNECT'),
           ),
         ],
       ),
     );
+    if (confirm == true) {
+      await bleService.disconnect();
+    }
   }
 }
+

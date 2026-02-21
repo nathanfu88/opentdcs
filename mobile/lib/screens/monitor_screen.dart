@@ -12,101 +12,113 @@ class MonitorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
+        final isConnected = bleService.isConnected;
+        final hasData = bleService.lastReading != null;
+
         return Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Connection status
-              if (!bleService.isConnected)
-                Card(
-                  color: colorScheme.errorContainer.withValues(alpha: 0.3),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning, color: colorScheme.error),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Text(
-                            'Not connected. Connect to view ADC data.',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
               const SizedBox(height: 16),
 
-              // ADC readings header
-              Text(
-                'ADC Readings',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              if (bleService.lastReading != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    'Last updated: ${_formatTime(bleService.lastReading!.timestamp)}',
-                    style: TextStyle(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+              // Header & Status
+              _buildHeader(context, bleService),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // ADC values display
-              if (bleService.lastReading != null)
-                Expanded(child: _buildADCDisplay(context, bleService))
-              else
+              if (!isConnected)
                 Expanded(
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.sensors_off,
-                          size: 64,
-                          color: colorScheme.onSurface.withValues(alpha: 0.2),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          bleService.isConnected
-                              ? 'Waiting for ADC data...'
-                              : 'No data available',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
+                    child: _MonitorEmptyState(
+                      icon: Icons.bluetooth_disabled,
+                      title: 'Device Disconnected',
+                      subtitle: 'Connect to an opentDCS device to view real-time data.',
                     ),
                   ),
-                ),
+                )
+              else if (!hasData)
+                const Expanded(
+                  child: Center(
+                    child: _MonitorEmptyState(
+                      icon: Icons.sensors_off,
+                      title: 'No Data Yet',
+                      subtitle: 'Waiting for the first reading from the device...',
+                    ),
+                  ),
+                )
+              else
+                Expanded(child: _buildADCDisplay(context, bleService)),
 
-              // Manual refresh button
-              if (bleService.isConnected)
-                ElevatedButton.icon(
-                  onPressed: () => bleService.readADC(),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('REFRESH NOW'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
+              // Manual refresh button (Optional in MD3, but useful here)
+              if (isConnected)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: FilledButton.icon(
+                    onPressed: () => bleService.readADC(),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('REFRESH NOW'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                    ),
                   ),
                 ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, BLEService bleService) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final hasData = bleService.lastReading != null;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Live Monitoring',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            if (hasData)
+              Text(
+                'Last updated: ${_formatTime(bleService.lastReading!.timestamp)}',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+          ],
+        ),
+        if (bleService.isConnected)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.bolt, size: 14, color: colorScheme.onSecondaryContainer),
+                const SizedBox(width: 4),
+                Text(
+                  'ACTIVE',
+                  style: TextStyle(
+                    color: colorScheme.onSecondaryContainer,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -117,7 +129,6 @@ class MonitorScreen extends StatelessWidget {
         ? bleService.currentIntensityMA
         : 0.0;
 
-    // Use actual intensity or default reference for calculations
     final referenceCurrent = intensity > 0 ? intensity : _idleReferenceCurrentMA;
 
     final calculator = ElectricalCalculator(
@@ -127,43 +138,52 @@ class MonitorScreen extends StatelessWidget {
 
     final quality = reading.getQuality(referenceCurrent);
 
-    return Column(
+    return ListView(
+      physics: const BouncingScrollPhysics(),
       children: [
         // Quality & Impedance Summary
         _buildQualityCard(context, quality, calculator.loadResistanceKOhms),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Calculated Values Grid
-        Expanded(
-          child: GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 1.1,
-            children: [
-              _buildADCCard(
-                'Source Voltage',
-                '${calculator.sourceVoltage.toStringAsFixed(2)} V',
-                colorScheme.secondary,
-              ),
-              _buildADCCard(
-                'Current',
-                '${calculator.loadCurrentMA.toStringAsFixed(2)} mA',
-                colorScheme.primary,
-              ),
-              _buildADCCard(
-                'Load Voltage',
-                '${calculator.loadVoltage.toStringAsFixed(2)} V',
-                Colors.orangeAccent,
-              ),
-              _buildADCCard(
-                'Resistance',
-                '${calculator.loadResistanceKOhms.toStringAsFixed(1)} kΩ',
-                Colors.purpleAccent,
-              ),
-            ],
-          ),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.3,
+          children: [
+            _buildADCCard(
+              context,
+              'Source',
+              '${calculator.sourceVoltage.toStringAsFixed(2)} V',
+              colorScheme.primary,
+              Icons.power,
+            ),
+            _buildADCCard(
+              context,
+              'Current',
+              '${calculator.loadCurrentMA.toStringAsFixed(2)} mA',
+              colorScheme.secondary,
+              Icons.bolt,
+            ),
+            _buildADCCard(
+              context,
+              'Load',
+              '${calculator.loadVoltage.toStringAsFixed(2)} V',
+              Colors.orange,
+              Icons.ev_station,
+            ),
+            _buildADCCard(
+              context,
+              'Resistance',
+              '${calculator.loadResistanceKOhms.toStringAsFixed(1)} kΩ',
+              Colors.purple,
+              Icons.straighten,
+            ),
+          ],
         ),
       ],
     );
@@ -182,59 +202,70 @@ class MonitorScreen extends StatelessWidget {
     switch (quality) {
       case ConnectionQuality.good:
         color = colorScheme.secondary;
-        label = 'GOOD CONNECTION';
+        label = 'GOOD CONTACT';
         icon = Icons.check_circle;
         break;
       case ConnectionQuality.fair:
-        color = Colors.orangeAccent;
-        label = 'FAIR CONNECTION';
-        icon = Icons.warning;
+        color = Colors.orange;
+        label = 'FAIR CONTACT';
+        icon = Icons.info;
         break;
       case ConnectionQuality.poor:
         color = colorScheme.error;
-        label = 'POOR CONNECTION';
+        label = 'POOR CONTACT';
         icon = Icons.error;
         break;
       case ConnectionQuality.unknown:
-        color = colorScheme.onSurface.withValues(alpha: 0.5);
-        label = 'MEASURING...';
-        icon = Icons.help_outline;
+        color = colorScheme.onSurfaceVariant;
+        label = 'CALCULATING...';
+        icon = Icons.help;
         break;
     }
 
     return Card(
-      color: color.withValues(alpha: 0.1),
+      elevation: 0,
+      color: color.withValues(alpha: 0.05),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: 28),
+                Icon(icon, color: color, size: 24),
                 const SizedBox(width: 12),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
                     color: color,
                   ),
                 ),
               ],
             ),
             if (impedance != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 '${impedance.toStringAsFixed(2)} kΩ',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 48,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: -1,
                 ),
               ),
-              const Text(
-                'Estimated Impedance',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+              Text(
+                'Load Resistance',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ],
@@ -243,35 +274,39 @@ class MonitorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildADCCard(String label, String value, Color color) {
+  Widget _buildADCCard(BuildContext context, String label, String value, Color color, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Card(
-      elevation: 4,
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
+            Row(
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
             Text(
               value,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -286,3 +321,41 @@ class MonitorScreen extends StatelessWidget {
     return '$hour:$minute:$second';
   }
 }
+
+class _MonitorEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _MonitorEmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 80, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.2)),
+        const SizedBox(height: 24),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+          child: Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

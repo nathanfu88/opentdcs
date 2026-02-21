@@ -21,265 +21,120 @@ class _ControlScreenState extends State<ControlScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    
     return Consumer<BLEService>(
       builder: (context, bleService, _) {
         final isRunning = bleService.isSessionRunning;
+        final isConnected = bleService.isConnected;
 
         return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-              // Connection status
-              if (!bleService.isConnected)
-                Card(
-                  color: colorScheme.errorContainer.withValues(alpha: 0.3),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning, color: colorScheme.error),
-                        const SizedBox(width: 16),
-                        const Expanded(child: Text('Not connected to device')),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/connect');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                          ),
-                          child: const Text('Connect'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // System Status Banner (Only when connected)
+              if (isConnected) _SystemStatusBanner(bleService: bleService),
 
-              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Connection status (Modernized)
+                    if (!isConnected)
+                      _DisconnectedCard(onConnect: () {
+                        Navigator.pushNamed(context, '/connect');
+                      }),
 
-              // Session timer display (Optimized with Selector)
-              if (isRunning)
-                const _SessionTimerDisplay()
-              else
-                const SizedBox.shrink(),
+                    const SizedBox(height: 12),
 
-              if (isRunning) ...[
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => bleService.stopSession(),
-                    icon: const Icon(Icons.stop, size: 40),
-                    label: const Text(
-                      'EMERGENCY STOP',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      backgroundColor: colorScheme.error,
-                      foregroundColor: colorScheme.onError,
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                    // Session timer display (Optimized with Selector)
+                    if (isRunning)
+                      const _SessionTimerDisplay()
+                    else
+                      const SizedBox.shrink(),
 
-              const SizedBox(height: 24),
-
-              // Intensity control
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Intensity',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            isRunning
-                                ? '${bleService.currentIntensityMA.toStringAsFixed(2)} mA'
-                                : '${_intensityMA.toStringAsFixed(2)} mA',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: !isRunning
-                                ? () {
-                                    setState(() {
-                                      _intensityMA = (_intensityMA - 0.1).clamp(0.0, 2.0);
-                                    });
-                                  }
-                                : null,
-                            icon: const Icon(Icons.remove_circle_outline),
-                            color: colorScheme.primary,
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: isRunning ? bleService.currentIntensityMA : _intensityMA,
-                              activeColor: colorScheme.primary,
-                              inactiveColor: colorScheme.primary.withValues(alpha: 0.2),
-                              min: 0.0,
-                              max: 2.0,
-                              divisions: 20,
-                              label: isRunning
-                                  ? '${bleService.currentIntensityMA.toStringAsFixed(2)} mA'
-                                  : '${_intensityMA.toStringAsFixed(2)} mA',
-                              onChanged: !isRunning
-                                  ? (value) {
-                                      setState(() {
-                                        _intensityMA = value;
-                                      });
-                                    }
-                                  : null,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: !isRunning
-                                ? () {
-                                    setState(() {
-                                      _intensityMA = (_intensityMA + 0.1).clamp(0.0, 2.0);
-                                    });
-                                  }
-                                : null,
-                            icon: const Icon(Icons.add_circle_outline),
-                            color: colorScheme.primary,
-                          ),
-                        ],
-                      ),
-                      const Text(
-                        'Range: 0.00 - 2.00 mA (0.1 mA steps)',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
+                    if (isRunning) ...[
+                      const SizedBox(height: 24),
+                      _EmergencyStopButton(onPressed: () => bleService.stopSession()),
                     ],
-                  ),
+
+                    const SizedBox(height: 24),
+
+                    // Intensity control
+                    _IntensityControlCard(
+                      isRunning: isRunning,
+                      currentIntensityMA: isRunning ? bleService.currentIntensityMA : _intensityMA,
+                      onChanged: (value) {
+                        setState(() {
+                          _intensityMA = value;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Duration control
+                    _DurationControlCard(
+                      isRunning: isRunning,
+                      selectedDuration: isRunning
+                          ? (bleService.sessionDurationSeconds ~/ 60)
+                          : _durationMinutes,
+                      presets: _durationPresets,
+                      onChanged: (value) {
+                        setState(() {
+                          _durationMinutes = value;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Pre-start quality check
+                    if (!isRunning && isConnected)
+                      _buildPreStartQuality(context, bleService),
+
+                    const SizedBox(height: 24),
+
+                    // Session controls
+                    if (!isRunning)
+                      SwipeToStart(
+                        onComplete: isConnected
+                            ? () => bleService.startSession(_intensityMA, _durationMinutes)
+                            : null,
+                        enabled: isConnected,
+                      ),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Duration control
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Duration',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: _durationPresets.map((minutes) {
-                          final isSelected = isRunning
-                              ? (bleService.sessionDurationSeconds ~/ 60) == minutes
-                              : _durationMinutes == minutes;
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4.0,
-                              ),
-                              child: ElevatedButton(
-                                onPressed: !isRunning
-                                    ? () {
-                                        setState(() {
-                                          _durationMinutes = minutes;
-                                        });
-                                      }
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.surfaceContainerHighest,
-                                  foregroundColor: isSelected
-                                      ? colorScheme.onPrimary
-                                      : colorScheme.onSurfaceVariant,
-                                  elevation: isSelected ? 2 : 0,
-                                ),
-                                child: Text('$minutes min'),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Pre-start quality check
-              if (!isRunning && bleService.isConnected)
-                _buildPreStartQuality(context, bleService),
-
-              const SizedBox(height: 16),
-
-              // Session controls
-              if (!isRunning)
-                SwipeToStart(
-                  onComplete: bleService.isConnected
-                      ? () => bleService.startSession(_intensityMA, _durationMinutes)
-                      : null,
-                  enabled: bleService.isConnected,
-                ),
             ],
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildPreStartQuality(BuildContext context, BLEService bleService) {
     final colorScheme = Theme.of(context).colorScheme;
     final reading = bleService.lastReading;
     if (reading == null) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Checking lead quality...',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
+      return Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Checking lead quality...',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+            ),
+          ],
+        ),
       );
     }
 
-    // Use current intensity setting or 0.5 as reference
     final quality = reading.getQuality(_intensityMA > 0.1 ? _intensityMA : 0.5);
     Color color;
     String label;
@@ -289,42 +144,324 @@ class _ControlScreenState extends State<ControlScreen> {
       case ConnectionQuality.good:
         color = colorScheme.secondary;
         label = 'Good Contact';
-        icon = Icons.check_circle_outline;
+        icon = Icons.check_circle;
         break;
       case ConnectionQuality.fair:
-        color = Colors.orangeAccent;
+        color = Colors.orange;
         label = 'Fair Contact';
-        icon = Icons.info_outline;
+        icon = Icons.info;
         break;
       case ConnectionQuality.poor:
         color = colorScheme.error;
         label = 'Poor Contact';
-        icon = Icons.error_outline;
+        icon = Icons.error;
         break;
       case ConnectionQuality.unknown:
-        color = colorScheme.onSurface.withValues(alpha: 0.5);
+        color = colorScheme.onSurfaceVariant;
         label = 'Unknown Contact';
-        icon = Icons.help_outline;
+        icon = Icons.help;
         break;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _SystemStatusBanner extends StatelessWidget {
+  final BLEService bleService;
+
+  const _SystemStatusBanner({required this.bleService});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    String status = 'SYSTEM READY';
+    Color color = colorScheme.secondary;
+    IconData icon = Icons.check_circle_outline;
+
+    if (bleService.isSessionRunning) {
+      final quality = bleService.lastReading?.getQuality(
+        bleService.currentIntensityMA,
+      );
+      if (quality == ConnectionQuality.poor) {
+        status = 'LEAD FAULT DETECTED';
+        color = colorScheme.error;
+        icon = Icons.warning_amber;
+      } else {
+        status = 'SESSION ACTIVE';
+        color = colorScheme.primary;
+        icon = Icons.bolt;
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      color: color.withValues(alpha: 0.1),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 20),
+          Icon(icon, color: color, size: 16),
           const SizedBox(width: 8),
           Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            status,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DisconnectedCard extends StatelessWidget {
+  final VoidCallback onConnect;
+
+  const _DisconnectedCard({required this.onConnect});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Icon(Icons.bluetooth_disabled, size: 48, color: colorScheme.onSurfaceVariant),
+            const SizedBox(height: 16),
+            const Text(
+              'No Device Connected',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connect to an openTDC device to begin stimulation.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: onConnect,
+              icon: const Icon(Icons.search),
+              label: const Text('SEARCH FOR DEVICES'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IntensityControlCard extends StatelessWidget {
+  final bool isRunning;
+  final double currentIntensityMA;
+  final ValueChanged<double> onChanged;
+
+  const _IntensityControlCard({
+    required this.isRunning,
+    required this.currentIntensityMA,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: isRunning ? colorScheme.surface : colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Intensity',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${currentIntensityMA.toStringAsFixed(2)} mA',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _IntensityButton(
+                  icon: Icons.remove,
+                  onPressed: !isRunning
+                      ? () => onChanged((currentIntensityMA - 0.1).clamp(0.0, 2.0))
+                      : null,
+                ),
+                Expanded(
+                  child: Slider(
+                    value: currentIntensityMA,
+                    min: 0.0,
+                    max: 2.0,
+                    divisions: 20,
+                    onChanged: !isRunning ? onChanged : null,
+                  ),
+                ),
+                _IntensityButton(
+                  icon: Icons.add,
+                  onPressed: !isRunning
+                      ? () => onChanged((currentIntensityMA + 0.1).clamp(0.0, 2.0))
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Range: 0.00 - 2.00 mA (0.1 mA steps)',
+                style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IntensityButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _IntensityButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(48, 48),
+      ),
+    );
+  }
+}
+
+class _DurationControlCard extends StatelessWidget {
+  final bool isRunning;
+  final int selectedDuration;
+  final List<int> presets;
+  final ValueChanged<int> onChanged;
+
+  const _DurationControlCard({
+    required this.isRunning,
+    required this.selectedDuration,
+    required this.presets,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: isRunning ? colorScheme.surface : colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Duration',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<int>(
+                segments: presets.map((m) {
+                  return ButtonSegment<int>(
+                    value: m,
+                    label: Text('$m min'),
+                  );
+                }).toList(),
+                selected: {selectedDuration},
+                onSelectionChanged: !isRunning
+                    ? (Set<int> newSelection) {
+                        onChanged(newSelection.first);
+                      }
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmergencyStopButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _EmergencyStopButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.stop, size: 28),
+      label: const Text(
+        'EMERGENCY STOP',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: colorScheme.error,
+        foregroundColor: colorScheme.onError,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
@@ -353,7 +490,7 @@ class _SwipeToStartState extends State<SwipeToStart> {
       height: 70,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: widget.enabled ? colorScheme.surfaceContainerHighest : colorScheme.surfaceContainerLow,
+        color: widget.enabled ? colorScheme.surfaceContainerHigh : colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(35),
       ),
       child: LayoutBuilder(
